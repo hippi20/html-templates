@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Dataset Requests Dashboard</h2>
+    
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="requestTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="pending-tab" data-toggle="tab" href="#pending" role="tab">
+                Pending Requests
+                <span class="badge badge-primary">{{ pending_requests|length }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="closed-tab" data-toggle="tab" href="#closed" role="tab">
+                Closed Requests
+                <span class="badge badge-secondary">{{ closed_requests|length }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content mt-3" id="requestTabsContent">
+        <!-- Pending Requests Tab -->
+        <div class="tab-pane fade show active" id="pending" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Jira ID</th>
+                            <th>Dataset Name</th>
+                            <th>Requested By</th>
+                            <th>Team</th>
+                            <th>Status</th>
+                            <th>JSON Data</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in pending_requests %}
+                        <tr>
+                            <td>{{ request.jira_ticket_id }}</td>
+                            <td>{{ request.dataset_name }}</td>
+                            <td>{{ request.requested_by }}</td>
+                            <td>{{ request.team }}</td>
+                            <td>
+                                <span class="badge {% if request.status == 'needs_correction' %}badge-warning{% else %}badge-info{% endif %}">
+                                    {{ request.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#jsonModal{{ request.jira_ticket_id }}">
+                                    View JSON
+                                </button>
+                            </td>
+                            <td>
+                                <form method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="request_id" value="{{ request.jira_ticket_id }}">
+                                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">Approve</button>
+                                    <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <!-- JSON Modal -->
+                        <div class="modal fade" id="jsonModal{{ request.jira_ticket_id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">JSON Data - {{ request.jira_ticket_id }}</h5>
+                                        <button type="button" class="close" data-dismiss="modal">
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <pre><code>{{ request.json_data|pprint }}</code></pre>
+                                        {% if request.validation_errors %}
+                                        <div class="alert alert-warning mt-3">
+                                            <h6>Validation Errors:</h6>
+                                            <pre>{{ request.validation_errors }}</pre>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No pending requests</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Closed Requests Tab -->
+        <div class="tab-pane fade" id="closed" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Jira ID</th>
+                            <th>Dataset Name</th>
+                            <th>Requested By</th>
+                            <th>Team</th>
+                            <th>Status</th>
+                            <th>JSON Data</th>
+                            <th>Closed At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in closed_requests %}
+                        <tr>
+                            <td>{{ request.jira_ticket_id }}</td>
+                            <td>{{ request.dataset_name }}</td>
+                            <td>{{ request.requested_by }}</td>
+                            <td>{{ request.team }}</td>
+                            <td>
+                                <span class="badge {% if request.status == 'approved' %}badge-success{% else %}badge-danger{% endif %}">
+                                    {{ request.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#jsonModal{{ request.jira_ticket_id }}">
+                                    View JSON
+                                </button>
+                            </td>
+                            <td>{{ request.updated_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        <!-- JSON Modal -->
+                        <div class="modal fade" id="jsonModal{{ request.jira_ticket_id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">JSON Data - {{ request.jira_ticket_id }}</h5>
+                                        <button type="button" class="close" data-dismiss="modal">
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <pre><code>{{ request.json_data|pprint }}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No closed requests</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Add any JavaScript for handling tab switching or other interactions
+    $(document).ready(function() {
+        // Store the active tab in localStorage
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            localStorage.setItem('activeTab', $(e.target).attr('href'));
+        });
+
+        // Retrieve the active tab from localStorage
+        var activeTab = localStorage.getItem('activeTab');
+        if (activeTab) {
+            $('#requestTabs a[href="' + activeTab + '"]').tab('show');
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 
