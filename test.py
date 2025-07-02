@@ -35,3 +35,20 @@ display(df_summary)
 
 for match in top_k:
     display_schema_match(match)
+
+
+
+
+
+
+
+
+import json
+import re
+
+def parse_llm_json(content):
+    # Remove triple-backtick code fencing and optional language tag
+    content_clean = re.sub(r"^```json|^```|```$", "", content.strip(), flags=re.MULTILINE)
+    
+    # Now try parsing
+    return json.loads(content_clean)
